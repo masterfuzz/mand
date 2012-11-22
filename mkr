@@ -1,0 +1,3 @@
+#!/bin/bash -e
+name=$i
+convert -endian msb -depth 16 -size 1000x1000 gray:$name ${name}.png && eog $name.png
