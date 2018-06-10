@@ -79,20 +79,20 @@ func main() {
 }
 
 func mainLoop(offset int) {
-  var gray uint16
+  var gray uint32
   var i, j uint16
 
   for i = uint16(offset); i < hcells*2; i += numRoute {
     for j = 0; j < hcells*2; j++ {
       gray = escape(
-        float64(i - hcells) / scale + centerR,
-        float64(j - hcells) / scale - centerI,
-      ) * 65535 / maxIter
+        (float64(i) - float64(hcells)) / scale + centerR,
+        (float64(j) - float64(hcells)) / scale - centerI,
+      ) * (16777216 / uint32(maxIter))
 
       pixMap.Set(int(i), int(j), color.NRGBA{
         R: uint8(gray & 255),
         G: uint8(gray << 1 & 255),
-        B: 0,
+        B: uint8(gray << 2 & 255),
         A: 255,
       })
     }
@@ -100,7 +100,7 @@ func mainLoop(offset int) {
   syncChan <- offset
 }
 
-func escape(re0 float64, im0 float64) uint16 {
+func escape(re0 float64, im0 float64) uint32 {
   var (
     iter uint16 = 0
     re float64 = 0
@@ -117,6 +117,6 @@ func escape(re0 float64, im0 float64) uint16 {
     iter++;
   }
 
-  return iter
+  return uint32(iter)
 }
 
