@@ -2,6 +2,7 @@ package main
 
 import (
   "os"
+  "sync"
   "fmt"
   "flag"
   "image"
@@ -10,25 +11,24 @@ import (
 )
 
 var (
-  maxIter  uint16  = 500
-  numRoute uint16  = 4
-  delta    float64 = 0.000001
+  maxIter  int     = 500
+  numRoute int     = 4
   centerR  float64 = 0
   centerI  float64 = 0
   scale    float64 = 1
-  hcells   uint16  = 500
+  hcells   int     = 500
+  outPath  string  = "test.png"
   pixMap   image.NRGBA
-  syncChan chan int
 )
 
 func getflags() {
-  //flag.IntVar(&maxIter, "iter", 500, "Max iterations")
-  //flag.IntVar(&numRoute, "routines", 4, "Number of go routines")
-  flag.Float64Var(&delta, "delta", 0.000001, "I dont remember this one")
+  flag.IntVar(&maxIter, "iter", 500, "Max iterations")
+  flag.IntVar(&numRoute, "routines", 4, "Number of go routines")
   flag.Float64Var(&centerR, "real", 0, "Real center")
   flag.Float64Var(&centerI, "imag", 0, "Imaginary center")
   flag.Float64Var(&scale, "scale", 1, "Scale")
-  //flag.IntVar(&hcells, "hcells", 500, "H Cells")
+  flag.StringVar(&outPath, "out", "test.png", "Path to output PNG")
+  flag.IntVar(&hcells, "size", 500, "Number of pixels")
 
   flag.Parse()
 }
@@ -39,33 +39,26 @@ func main() {
 		centerR, centerI,
 		scale, maxIter, hcells*2);
 
-  // allocate
-  //pixMap = make([][]int, hcells*2)
-  //for i := range pixMap {
-  //  pixMap[i] = make([]int, hcells*2)
-  //}
-  pixMap = *image.NewNRGBA(image.Rect(0,0,int(hcells*2),int(hcells*2)))
+  // allocate image
+  pixMap = *image.NewNRGBA(image.Rect(0,0,hcells*2,hcells*2))
 
-  fmt.Printf("test: %d\n", escape(0, 0))
-  fmt.Printf("test: %d\n", escape(2, 5))
-
+  // adjust scale with cells
   scale = float64(hcells) * scale
 
   // start routines
-  syncChan = make(chan int)
-  for p := 0; p < int(numRoute); p++ {
-    go mainLoop(p)
+  var wg sync.WaitGroup
+  wg.Add(numRoute)
+  for p := 0; p < numRoute; p++ {
+    go mainLoop(p, &wg)
   }
 
   // join
-  for p := 0; p < int(numRoute); p++ {
-    fmt.Println(<-syncChan)
-  }
+  wg.Wait()
 
-  fmt.Println("Writing test.png")
+  fmt.Printf("Writing %v\n", outPath)
 
   // write
-  outputFile, err := os.Create("test.png")
+  outputFile, err := os.Create(outPath)
   if err != nil {
     fmt.Println("FAIL")
   }
@@ -78,18 +71,18 @@ func main() {
   fmt.Println("Done!")
 }
 
-func mainLoop(offset int) {
+func mainLoop(offset int, wg *sync.WaitGroup) {
+  defer wg.Done()
   var gray uint32
-  var i, j uint16
 
-  for i = uint16(offset); i < hcells*2; i += numRoute {
-    for j = 0; j < hcells*2; j++ {
+  for i := offset; i < hcells*2; i += numRoute {
+    for j := 0; j < hcells*2; j++ {
       gray = escape(
         (float64(i) - float64(hcells)) / scale + centerR,
         (float64(j) - float64(hcells)) / scale - centerI,
-      ) * (16777216 / uint32(maxIter))
+      ) * uint32(16777216 / maxIter)
 
-      pixMap.Set(int(i), int(j), color.NRGBA{
+      pixMap.Set(i, j, color.NRGBA{
         R: uint8(gray & 255),
         G: uint8(gray << 1 & 255),
         B: uint8(gray << 2 & 255),
@@ -97,12 +90,11 @@ func mainLoop(offset int) {
       })
     }
   }
-  syncChan <- offset
 }
 
 func escape(re0 float64, im0 float64) uint32 {
   var (
-    iter uint16 = 0
+    iter int = 0
     re float64 = 0
     im float64 = 0
     tmp float64
