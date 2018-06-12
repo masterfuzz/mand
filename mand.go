@@ -47,9 +47,8 @@ func main() {
 
   // start routines
   var wg sync.WaitGroup
-  wg.Add(numRoute)
   for p := 0; p < numRoute; p++ {
-    go mainLoop(p, &wg)
+    mainLoop(p, &wg)
   }
 
   // join
@@ -72,24 +71,28 @@ func main() {
 }
 
 func mainLoop(offset int, wg *sync.WaitGroup) {
-  defer wg.Done()
-  var gray uint32
+  wg.Add(1)
 
-  for i := offset; i < hcells*2; i += numRoute {
-    for j := 0; j < hcells*2; j++ {
-      gray = escape(
-        (float64(i) - float64(hcells)) / scale + centerR,
-        (float64(j) - float64(hcells)) / scale - centerI,
-      ) * uint32(16777216 / maxIter)
+  go func() {
+    defer wg.Done()
+    var gray uint32
 
-      pixMap.Set(i, j, color.NRGBA{
-        R: uint8(gray & 255),
-        G: uint8(gray << 1 & 255),
-        B: uint8(gray << 2 & 255),
-        A: 255,
-      })
+    for i := offset; i < hcells*2; i += numRoute {
+      for j := 0; j < hcells*2; j++ {
+        gray = escape(
+          (float64(i) - float64(hcells)) / scale + centerR,
+          (float64(j) - float64(hcells)) / scale - centerI,
+        ) * uint32(16777216 / maxIter)
+
+        pixMap.Set(i, j, color.NRGBA{
+          R: uint8(gray & 255),
+          G: uint8(gray << 1 & 255),
+          B: uint8(gray << 2 & 255),
+          A: 255,
+        })
+      }
     }
-  }
+  }()
 }
 
 func escape(re0 float64, im0 float64) uint32 {
