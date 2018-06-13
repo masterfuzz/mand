@@ -86,8 +86,8 @@ func mainLoop(offset int, wg *sync.WaitGroup) {
 
         pixMap.Set(i, j, color.NRGBA{
           R: uint8(gray & 255),
-          G: uint8(gray << 1 & 255),
-          B: uint8(gray << 2 & 255),
+          G: uint8(gray >> 8 & 255),
+          B: uint8(gray >> 16 & 255),
           A: 255,
         })
       }
@@ -112,6 +112,9 @@ func escape(re0 float64, im0 float64) uint32 {
     iter++;
   }
 
+  if iter == maxIter {
+    return 0
+  }
   return uint32(iter)
 }
 
