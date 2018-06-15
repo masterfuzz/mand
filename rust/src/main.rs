@@ -1,55 +1,48 @@
 extern crate image;
-use image::{DynamicImage, ImageBuffer};
+extern crate num_complex;
+use num_complex::Complex;
 
-const MAX_ITER: i32 = 500;
-const CENTER_R: f64 = 0.0;
-const CENTER_I: f64 = 0.0;
-const SCALE: f64 = 1.0;
+const MAX_ITER: u32 = 2000;
+const CENTER_R: f64 = -0.748;
+const CENTER_I: f64 = 0.1;
+const SCALE: f64 = 714.286;
 const CELLS: u32 = 500;
-const N_THREADS: u32 = 1;
+const L255: f64 = 367.88723542668566888;
+//const N_THREADS: u32 = 1;
 
 
 fn main() {
-  let mut img = ImageBuffer::new(CELLS*2, CELLS*2);
-  println!("Hello! {}", escape(1.0, 1.0));
-  main_loop(0, &img);
-  println!("Done!");
-}
+  let mut img = image::GrayImage::new(CELLS*2, CELLS*2);
+  let cscale = SCALE * CELLS as f64;
 
-fn main_loop(offset: u32, img: *mut DynamicImage) {
-  let mut i = offset;
+  println!("Running...");
+  for (x, y, pixel) in img.enumerate_pixels_mut() {
+    let e = escape(Complex::new(
+      (x as f64 - CELLS as f64) / cscale + CENTER_R,
+      (y as f64 - CELLS as f64) / cscale - CENTER_I
+    ));
 
-  while i < CELLS*2 {
-    for j in 0..(CELLS*2) {
-      let e = escape(
-        (i as f64 - CELLS as f64) / SCALE + CENTER_R,
-        (j as f64 - CELLS as f64) / SCALE - CENTER_I
-      );
-      set_pixel(img, i, j, e);
-    }
-    i += N_THREADS;
+    //*pixel = image::Luma([(e % 255) as u8]);
+    *pixel = image::Luma([f64::floor(L255 * f64::log2(1f64 + e as f64 / MAX_ITER as f64)) as u8]);
   }
+
+  println!("Saving");
+  img.save("out.png").unwrap();
+
+  println!("Done");
 }
 
-fn set_pixel(img: *mut DynamicImage, i: u32, j: u32, e: u32) {
-  img.put_pixel(i, j, image::Luma([
-    (e % 255) as u8
-  ]))
-}
-
-fn escape(re0: f64, im0: f64) -> i32 {
-  let mut re = 0f64;
-  let mut im = 0f64;
-  let mut tmp = 0f64;
+fn escape(c: Complex<f64>) -> u32 {
+  let mut z = Complex::new(0f64,0f64);
 
   for iter in 0..MAX_ITER {
-    if re * re + im * im  >= 4.0 {
+    if z.re * z.re + z.im * z.im  >= 4.0 {
       return iter;
     }
 
-    tmp = re * re - im * im + re0;
-    im = 2.0 * re *im + im0;
-    re = tmp;
+    z = z * z + c
   }
-  return 0;
+  return 0u32;
+
 }
+
