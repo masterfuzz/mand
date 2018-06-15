@@ -1,0 +1,8 @@
+[package]
+name = "mand"
+version = "0.1.0"
+authors = ["Rob Martens <master.fuzz@gmail.com>"]
+
+[dependencies]
+image = "*"
+
