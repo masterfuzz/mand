@@ -6,4 +6,5 @@ authors = ["Rob Martens <master.fuzz@gmail.com>"]
 [dependencies]
 image = "*"
 num-complex = "*"
+rayon = "*"
 
