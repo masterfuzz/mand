@@ -14,14 +14,11 @@ const L255: f64 = 367.88723542668566888;
 
 
 fn main() {
-  //let mut img = image::GrayImage::new(CELLS*2, CELLS*2);
   let cscale = SCALE * CELLS as f64;
+  let mut hist = vec![0u32; MAX_ITER as usize];
 
   println!("Running...");
-  //img.enumerate_pixels_mut()
-  //   .for_each(|(x, y, pixel): (u32, u32, &mut image::Luma<u8>)| {
-  let buf: Vec<_> = (0..(CELLS*CELLS*4)).into_par_iter()
-                      .map(|i| {
+  let escapes: Vec<_> = (0..(CELLS*CELLS*4)).into_par_iter().map(|i| {
     let x = i / (CELLS*2);
     let y = i % (CELLS*2);
     let e = escape(Complex::new(
@@ -29,12 +26,24 @@ fn main() {
       (y as f64 - CELLS as f64) / cscale - CENTER_I
     ));
 
-    //*pixel = image::Luma([(e % 255) as u8]);
-    return f64::floor(L255 * f64::log2(1f64 + e as f64 / MAX_ITER as f64)) as u8;
+    return e; //f64::floor(L255 * f64::log2(1f64 + e as f64 / MAX_ITER as f64)) as u8;
+  }).collect();
+
+  for v in escapes.iter() {
+    hist[*v as usize] += 1;
+  }
+  let total: u32 = hist.iter().sum();
+
+  let pixels: Vec<_> = escapes.iter().map(|e| {
+    if e == 0 {
+      return 0u8;
+    }
+    let hnorm: f64 = (0..*e).map(|j| hist[j as usize] as f64 / total as f64).sum();
+    return f64::floor(L255 * f64::log2(1f64 + hnorm)) as u8;
   }).collect();
 
   println!("Saving");
-  let img = image::GrayImage::from_raw(CELLS*2, CELLS*2, buf);
+  let img = image::GrayImage::from_raw(CELLS*2, CELLS*2, pixels);
   img.unwrap().save("out.png").unwrap();
 
   println!("Done");
